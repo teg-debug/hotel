@@ -1,0 +1,115 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: hotel-backend
+  profiles:
+    # 默认以 dev 启动，便于本地直接 run；生产部署时设置 SPRING_PROFILES_ACTIVE=prod
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  autoconfigure:
+    exclude:
+      # 嵌入模型与向量库统一由 AiConfig 按开关管理，避免与自动配置冲突
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiEmbeddingAutoConfiguration
+      - org.springframework.ai.vectorstore.chroma.autoconfigure.ChromaVectorStoreAutoConfiguration
+  ai:
+    openai:
+      # 密钥必须由环境变量提供，不再在配置文件中保留任何可用的默认值
+      api-key: ${DEEPSEEK_API_KEY:}
+      base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
+      chat:
+        options:
+          model: ${DEEPSEEK_CHAT_MODEL:deepseek-chat}
+          temperature: 0.7
+      embedding:
+        enabled: false          # 嵌入模型由本项目自定义管理，不使用 OpenAI 官方嵌入
+    vectorstore:
+      chroma:
+        enabled: false          # 关闭官方 starter 自动配置，向量库由 AiConfig 按开关创建
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${DB_URL:jdbc:mysql://localhost:3306/hotel?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      database: ${REDIS_DATABASE:0}
+      password: ${REDIS_PASSWORD:}
+  jackson:
+    time-zone: GMT+8
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true   # 下划线转驼峰：member_level -> memberLevel
+    # 默认不打印 SQL；本地调试在 dev profile 中改为 StdOutImpl
+    log-impl: ${MYBATIS_LOG_IMPL:org.apache.ibatis.logging.nologging.NoLoggingImpl}
+  global-config:
+    banner: false
+    db-config:
+      id-type: auto                       # 主键自增
+
+jwt:
+  # 必须由环境变量提供，启动期会校验非空且不少于 32 字节
+  secret: ${JWT_SECRET:}
+  expire: ${JWT_EXPIRE:604800}            # Token 有效期：7 天（秒）
+
+# ============ 应用自定义配置 ============
+app:
+  cors:
+    # 跨域来源白名单，为空表示不开启跨域（前端开发经 Vite 代理属同源）
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:}
+  security:
+    # 登录态本地缓存（毫秒）：0 = 关闭（默认，每个请求都校验 Redis，登出/互踢立即生效）
+    # 开启后本实例在 TTL 内不再逐请求访问 Redis，代价是「跨实例」的登出/互踢最多滞后该时长
+    # （同实例的登录与登出会立即清除本地条目，因此单实例部署行为不变）
+    token-cache-millis: ${TOKEN_CACHE_MILLIS:0}
+  payment:
+    # mock-本地模拟支付（仅开发）；gateway-真实网关（默认，未接入时拒绝支付与退款）
+    gateway: ${PAYMENT_GATEWAY:gateway}
+    # 回调验签密钥，为空则拒绝所有回调
+    callback-secret: ${PAYMENT_CALLBACK_SECRET:}
+    # 回调时间戳容忍窗口（秒）
+    timestamp-tolerance-seconds: ${PAYMENT_TIMESTAMP_TOLERANCE:300}
+    # 回调来源 IP 白名单，逗号分隔；为空表示不限制来源
+    allowed-ips: ${PAYMENT_ALLOWED_IPS:}
+  member:
+    # 会员等级折扣率：键为等级（0-普通 1-银卡 2-金卡）
+    discount:
+      "0": 1.00
+      "1": 0.95
+      "2": 0.88
+  booking:
+    # 候选房间池大小：房间级锁并行度的上限。实测（单房型热点，32 线程）
+    # 池 10/20/50 对应吞吐 72/119/175 QPS、首次请求成功率 28~39%/49~62%/86~96%
+    candidate-pool-size: ${BOOKING_CANDIDATE_POOL_SIZE:50}
+    # 单请求最多尝试的候选房间数：买「首次成功率」，代价是更多无效事务
+    # 池 50 下 3→8：成功率 88.0%→95.8%，吞吐 -8%
+    max-candidate-attempts: ${BOOKING_MAX_CANDIDATE_ATTEMPTS:8}
+    # 单候选房间的抢锁等待（毫秒）：拿不到就换下一个候选
+    # 单请求最坏等待 = 本值 × 最多尝试候选数
+    room-lock-wait-millis: ${BOOKING_ROOM_LOCK_WAIT_MILLIS:50}
+  ai:
+    # 嵌入服务：false=使用内置本地哈希嵌入（零依赖，字面匹配）；true=使用 OpenAI 兼容语义嵌入服务
+    embedding:
+      enabled: false
+      base-url: ${EMBEDDING_BASE_URL:https://api.siliconflow.cn/v1}
+      api-key: ${EMBEDDING_API_KEY:}
+      model: ${EMBEDDING_MODEL:BAAI/bge-m3}
+    # 向量库：false=内存向量库 SimpleVectorStore；true=本地 Chroma（需先启动：chroma run --path ./chroma-data）
+    chroma:
+      enabled: ${CHROMA_ENABLED:false}
+      url: ${CHROMA_URL:http://localhost:8000}
+      collection: ${CHROMA_COLLECTION:hotel_kb}
+  chat:
+    # 会话闲置多久后由定时任务回收（分钟）；同时也是 Redis 会话记忆的 TTL，两者保持一致
+    session-timeout-minutes: ${CHAT_SESSION_TIMEOUT_MINUTES:30}
+    # 单次回收上限
+    reclaim-batch-size: ${CHAT_RECLAIM_BATCH_SIZE:500}
+    # 送给模型的多轮上下文窗口大小（条）；越大上下文越完整，token 消耗也越高
+    memory-window-size: ${CHAT_MEMORY_WINDOW_SIZE:20}
+
+logging:
+  level:
+    com.hotel: info

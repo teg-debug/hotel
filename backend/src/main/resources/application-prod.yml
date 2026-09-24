@@ -1,0 +1,30 @@
+# =====================================================================
+# 生产环境配置：不提供任何默认密钥与调试开关，缺失即启动失败
+# =====================================================================
+# 部署前必须通过环境变量注入：
+#   JWT_SECRET、DB_PASSWORD、DEEPSEEK_API_KEY
+# 接入真实支付网关后还需注入：
+#   PAYMENT_GATEWAY=gateway、PAYMENT_CALLBACK_SECRET、PAYMENT_ALLOWED_IPS
+# =====================================================================
+
+spring:
+  data:
+    redis:
+      password: ${REDIS_PASSWORD:}
+
+app:
+  cors:
+    # 生产环境必须显式列出前端域名，留空即不开启跨域
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:}
+  payment:
+    gateway: ${PAYMENT_GATEWAY:gateway}
+    callback-secret: ${PAYMENT_CALLBACK_SECRET:}
+    allowed-ips: ${PAYMENT_ALLOWED_IPS:}
+  ai:
+    embedding:
+      enabled: ${EMBEDDING_ENABLED:true}
+
+logging:
+  level:
+    root: info
+    com.hotel: info

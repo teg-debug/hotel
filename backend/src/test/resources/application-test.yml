@@ -1,0 +1,19 @@
+# =====================================================================
+# 测试 profile：只保留跑并发用例必需的最小配置
+# 数据源 / Redis 地址由 BookingTestInfrastructure 动态注入
+# （Testcontainers 起的一次性实例，或本机已有实例）
+# =====================================================================
+spring:
+  main:
+    banner-mode: "off"
+
+mybatis-plus:
+  configuration:
+    # 并发用例会产生大量 SQL，关掉语句打印，只看结论
+    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
+
+logging:
+  level:
+    root: warn
+    com.hotel: warn
+    org.testcontainers: warn

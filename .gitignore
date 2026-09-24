@@ -1,0 +1,54 @@
+# ==================== 依赖与构建产物 ====================
+node_modules/
+dist/
+build/
+target/
+out/
+*.class
+
+# ==================== 环境变量与本地密钥 ====================
+# 真实密钥一律走环境变量，禁止提交
+.env
+.env.local
+.env.*.local
+*.local
+application-local.yml
+application-local.properties
+
+# ==================== IDE / 编辑器 ====================
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+*.swp
+*.swo
+
+# ==================== 日志与临时文件 ====================
+logs/
+*.log
+*.tmp
+*.bak
+.DS_Store
+Thumbs.db
+
+# ==================== 本地数据 / 向量库 ====================
+chroma-data/
+data/
+
+# ==================== TRAE 内部产物 ====================
+.trae-html-share-packages/
+.trae/
+
+# ==================== 非源码类文档产物（个人资料，不入库） ====================
+hotel-interview-prep/
+hotel-interview-qa-resume/
+hotel-project-review/
+hotel-test-report/
+resume-rewrite/
+
+# ==================== 测试与基准报告 ====================
+backend/target/
+frontend/dist/
+surefire-reports/
+*.dumpstream
